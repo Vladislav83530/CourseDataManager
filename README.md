@@ -1,1 +1,1 @@
-# CurseDataManager
+# CourseDataManager
