@@ -2,7 +2,7 @@
 using CourseDataManager.BLL.DTOs;
 using CourseDataManager.BLL.Services.Interfaces;
 using CourseDataManager.DAL.Entities;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseDataManager.API.Controllers
@@ -27,6 +27,7 @@ namespace CourseDataManager.API.Controllers
         /// <param name="request"></param>
         /// <returns>registered user</returns>
         [HttpPost("register")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<User>> Register(UserRegisterDTO request)
         {
             if (await _authService.IsRegisteredAsync(request.Email.ToLower()))
@@ -38,6 +39,7 @@ namespace CourseDataManager.API.Controllers
             user.isAvailable = true;
             user.PasswordHash = passwordHash;
             user.PasswordSalt = passwordSalt;
+            user.Role = Roles.Student;
 
             var savedUser =  await _userService.SaveUserAsync(user);
             return Ok(savedUser);

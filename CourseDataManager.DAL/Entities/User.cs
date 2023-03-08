@@ -27,7 +27,7 @@ namespace CourseDataManager.DAL.Entities
 
     public enum Roles
     {
-        Admin, 
-        Student
+        Student,
+        Admin
     }
 }

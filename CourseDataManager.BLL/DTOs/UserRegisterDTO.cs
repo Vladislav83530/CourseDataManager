@@ -1,5 +1,4 @@
-﻿using CourseDataManager.DAL.Entities;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace CourseDataManager.BLL.DTOs
 {
@@ -15,7 +14,5 @@ namespace CourseDataManager.BLL.DTOs
         public string Email { get; set; } = string.Empty;
         [Required]
         public string Password { get; set; } = string.Empty;
-        [Required]
-        public Roles Role { get; set; }
     }
 }
