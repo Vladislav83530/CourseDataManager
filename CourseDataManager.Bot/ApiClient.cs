@@ -1,9 +1,6 @@
 ﻿using CourseDataManager.Bot.Models;
-using Newtonsoft.Json.Linq;
 using System.Configuration;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Telegram.Bot.Types;
 
 namespace CourseDataManager.Bot
 {
@@ -50,6 +47,8 @@ namespace CourseDataManager.Bot
         {
             _client.DefaultRequestHeaders.Add("Authorization", $"bearer {token}");
             var response = await _client.PostAsJsonAsync(_address + $"/api/Auth/register", user);
+            _client.DefaultRequestHeaders.Remove("Authorization");
+
             if (response.IsSuccessStatusCode)
                 return "Користувач успішно зареєстрований";
             if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)

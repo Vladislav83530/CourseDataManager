@@ -73,7 +73,7 @@ namespace CourseDataManager.Bot
                 return;
             }
             // Login message
-            else if (message.Text == "Увійти")
+            else if (message.Text.ToLower() == "увійти")
             {
                 if (!string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
                 {
@@ -100,32 +100,21 @@ namespace CourseDataManager.Bot
                 return;
             }
             // Log out
-            else if (message.Text == "Вийти")
+            else if (message.Text.ToLower() == "вийти")
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
                     return;
-                //if (string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
-                //{
-                //    await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно увійти)");
-                //    return;
-                //}
 
                 await _apiClient.UpdateJwtToken(message.Chat.Id, string.Empty);
                 await client.SendTextMessageAsync(message.Chat.Id, "Ви успішно вийшли.)");
                 return;
             }
-            else if(message.Text == "Реєстрація")
+            else if(message.Text.ToLower() == "реєстрація")
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
                     return;
-                //var token = await _apiClient.GetJwtToken(message.Chat.Id);
-                //if (string.IsNullOrEmpty(token))
-                //{
-                //    await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно увійти)");
-                //    return;
-                //}
 
                 if (IsAdmin(token))
                     await client.SendTextMessageAsync(message.Chat.Id, "Для реєстрації користувача уведіть наступну команду:" +
@@ -139,12 +128,6 @@ namespace CourseDataManager.Bot
                 var token = await CheckToken(client, message);
                 if (token == null)
                     return;
-                //var token = await _apiClient.GetJwtToken(message.Chat.Id);
-                //if (string.IsNullOrEmpty(token))
-                //{
-                //    await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно увійти)");
-                //    return;
-                //}
 
                 if (IsAdmin(token))
                 {
@@ -156,20 +139,14 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін.");
                 return;
             }
-            //else if (message.Text == "show")
-            //{
-            //    if (string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
-            //    {
-            //        await client.SendTextMessageAsync(message.Chat.Id, "null");
-            //        return;
-            //    }
-            //    await client.SendTextMessageAsync(message.Chat.Id, await _apiClient.GetJwtToken(message.Chat.Id));
-            //    return;
-            //}
             // Anothe message
             else
             {
-                await client.SendTextMessageAsync(message.Chat.Id, "Невірна команда спробуй ще раз");
+                await client.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Невірна команду. Використай /help, щоб побачити можливі команди",
+                    replyMarkup: replyKeyboardMarkup
+                );
             }
         }
 
@@ -186,6 +163,7 @@ namespace CourseDataManager.Bot
             return Task.CompletedTask;
         }
 
+        #region Help message
         private async Task<string> CheckToken(ITelegramBotClient client, Message message)
         {
             var token = await _apiClient.GetJwtToken(message.Chat.Id);
@@ -197,25 +175,30 @@ namespace CourseDataManager.Bot
             else
                 return token;
         }
+        #endregion
 
         #region Parse model
         private UserLogin ParseForLogin(string message)
         {
             var logPass = message.Split(" ");
-            UserLogin user = new();
-            user.Email = logPass[1].Trim();
-            user.Password = logPass[3].Trim();
+            var user = new UserLogin
+            {
+                Email = logPass[1].Trim(),
+                Password = logPass[3].Trim()
+            };
             return user;
         }
 
         private UserRegister ParseForRegister(string message)
         {
             var registerInfo = message.Split(":");
-            UserRegister user = new();
-            user.UserName = registerInfo[1].Trim().Split("\n")[0];
-            user.UserSurname = registerInfo[2].Trim().Split("\n")[0];
-            user.Email = registerInfo[3].Trim().Split("\n")[0];
-            user.Password = registerInfo[4].Trim().Split("\n")[0];
+            var user = new UserRegister
+            {
+                UserName = registerInfo[1].Trim().Split("\n")[0],
+                UserSurname = registerInfo[2].Trim().Split("\n")[0],
+                Email = registerInfo[3].Trim().Split("\n")[0],
+                Password = registerInfo[4].Trim().Split("\n")[0]
+            };
             return user;
         }
         #endregion
@@ -224,17 +207,8 @@ namespace CourseDataManager.Bot
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var token = tokenHandler.ReadJwtToken(tokenString);
-            var claims = token.Claims;
-            var role = claims.FirstOrDefault(c => c.Type == ClaimTypes.Role);
-
-            if(role != null)
-            {
-                if(role.Value.ToString() == "Admin")
-                    return true;
-                else
-                    return false;
-            }
-            return false;
+            var role = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
+            return role == "Admin";
         }
     }
 }
