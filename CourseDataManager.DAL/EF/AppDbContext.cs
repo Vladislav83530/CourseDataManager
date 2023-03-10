@@ -9,6 +9,7 @@ namespace CourseDataManager.DAL.EF
     public class AppDbContext : DbContext
     {
         public DbSet<User> Users { get; set; }
+        public DbSet<Link> Links { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
             Database.EnsureCreated();
