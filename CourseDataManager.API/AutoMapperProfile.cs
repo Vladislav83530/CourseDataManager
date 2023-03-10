@@ -8,6 +8,8 @@ namespace CourseDataManager.API
     {
         public AutoMapperProfile() {
             CreateMap<UserRegisterDTO, User>();
+
+            CreateMap<User, UserDTO>();
         }
     }
 }

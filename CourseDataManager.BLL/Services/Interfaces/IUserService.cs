@@ -6,5 +6,7 @@ namespace CourseDataManager.BLL.Services.Interfaces
     {
         Task<User> SaveUserAsync(User user);
         Task<User> GetUserAsync(string email);
+        Task<IEnumerable<User>> GetStudentsAsync();
+        Task ReverseIsAvailableValueAsync(string email, bool isAvailable_);
     }
 }

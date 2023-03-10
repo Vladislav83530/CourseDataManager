@@ -5,14 +5,12 @@ using Telegram.Bot.Types;
 using Telegram.Bot;
 using System.Configuration;
 using Telegram.Bot.Types.ReplyMarkups;
-using CourseDataManager.Bot.Models;
 using System.Text.RegularExpressions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Telegram.Bot.Types.InputFiles;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Internal;
-using Newtonsoft.Json.Linq;
 
 namespace CourseDataManager.Bot
 {
@@ -27,6 +25,7 @@ namespace CourseDataManager.Bot
         private readonly string _patternFindDoc;
         private readonly string _patternLink;
         private readonly IHostingEnvironment _hostingEnvironment;
+        private readonly ParserModel _parserModel;
 
         public CourseDataManagerBot()
         {
@@ -39,6 +38,7 @@ namespace CourseDataManager.Bot
             _patternFindDoc = ConfigurationManager.AppSettings.Get("PatternFindDoc");
             _patternLink = ConfigurationManager.AppSettings.Get("PatternLink");
             _hostingEnvironment = new HostingEnvironment();
+            _parserModel = new ParserModel();
         }
 
         public async Task Start()
@@ -63,6 +63,8 @@ namespace CourseDataManager.Bot
                 await HandleMessageAsync(botClient, update.Message);
             if (update.Type == UpdateType.Message && update?.Message?.Document != null)
                 await HandleMessageDocumentAsync(botClient, update.Message);
+            if (update.Type == UpdateType.CallbackQuery)
+                await HandleCallbackQuery(botClient, update.CallbackQuery);
         }
 
         private async Task HandleMessageAsync(ITelegramBotClient client, Message message)
@@ -105,7 +107,7 @@ namespace CourseDataManager.Bot
                     return;
                 }
 
-                var user = ParseForLogin(message.Text);
+                var user = _parserModel.ParseForLogin(message.Text);
                 user.ChatId = message.Chat.Id;
                 var result = await _apiClient.Login(user);
                 await client.SendTextMessageAsync(message.Chat.Id, result);
@@ -145,7 +147,7 @@ namespace CourseDataManager.Bot
 
                 if (IsAdmin(token))
                 {
-                    var user = ParseForRegister(message.Text);
+                    var user = _parserModel.ParseForRegister(message.Text);
                     var result = await _apiClient.RegisterStudent(user, token);
                     await client.SendTextMessageAsync(message.Chat.Id, result);
                 }
@@ -209,7 +211,7 @@ namespace CourseDataManager.Bot
                     $"Посилання: ****)");
                 else
                     await client.SendTextMessageAsync(message.Chat.Id, "Зберігати посилання може тільки адмін.");
-                return;;
+                return; ;
             }
             // create link material
             else if (Regex.IsMatch(message.Text.Trim(), _patternLink, RegexOptions.IgnoreCase))
@@ -218,10 +220,37 @@ namespace CourseDataManager.Bot
                 if (token == null)
                     return;
 
-                var link = ParseLink(message.Text);
+                var link = _parserModel.ParseLink(message.Text);
 
                 var result = await _apiClient.CreateLink(link, token);
                 await client.SendTextMessageAsync(message.Chat.Id, result);
+                return;
+            }
+            // get all students
+            else if (message.Text == "/getstudents")
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                if (IsAdmin(token))
+                {
+                    var students = await _apiClient.GetStudents(token);
+                    foreach (var student in students)
+                    {
+                        InlineKeyboardMarkup inlineKeyboard = new(new[]
+                        {
+                            new[]
+                            {
+                                InlineKeyboardButton.WithCallbackData(text: $"{student.isAvailable}", callbackData: $"{student.Email} {student.isAvailable}"),
+                            },
+                        });
+                        await client.SendTextMessageAsync(message.Chat.Id, $"{student.UserName} {student.UserName} Пошта: {student.Email}", replyMarkup: inlineKeyboard);
+                    }
+                }
+                else
+                    await client.SendTextMessageAsync(message.Chat.Id, "Доступно тільки для адміна");
+                return;
             }
             //help
             else if (message.Text.ToLower() == "/help")
@@ -271,6 +300,29 @@ namespace CourseDataManager.Bot
 
         }
 
+        private async Task HandleCallbackQuery(ITelegramBotClient client, CallbackQuery query)
+        {
+            var token = await CheckToken(client, query.Message);
+            if (token == null)
+                return;
+
+            string codeOfButton = query.Data;
+            if (Regex.IsMatch(codeOfButton, @"\S+\s\S+", RegexOptions.IgnoreCase))
+            {
+                if (IsAdmin(token))
+                {
+                    var result = await _apiClient.ReverseIsAvailableValue(codeOfButton.Split(" ")[0], codeOfButton.Split(" ")[1], token);
+                    await client.SendTextMessageAsync(query.Message.Chat.Id, result);
+                    return;
+                }
+            }
+            else
+            {
+                await client.SendTextMessageAsync(query.Message.Chat.Id, "Доступ тільки для адміна");
+                return;
+            }
+        }
+
         private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
             var ErrorMessage = exception switch
@@ -296,44 +348,6 @@ namespace CourseDataManager.Bot
             else
                 return token;
         }
-        #endregion
-
-        #region Parse model
-        private UserLogin ParseForLogin(string message)
-        {
-            var logPass = message.Split(" ");
-            var user = new UserLogin
-            {
-                Email = logPass[1].Trim(),
-                Password = logPass[3].Trim()
-            };
-            return user;
-        }
-
-        private UserRegister ParseForRegister(string message)
-        {
-            var registerInfo = message.Split(":");
-            var user = new UserRegister
-            {
-                UserName = registerInfo[1].Trim().Split("\n")[0],
-                UserSurname = registerInfo[2].Trim().Split("\n")[0],
-                Email = registerInfo[3].Trim().Split("\n")[0],
-                Password = registerInfo[4].Trim().Split("\n")[0]
-            };
-            return user;
-        }
-
-        private Link ParseLink(string message)
-        {
-            var linkInfo = message.Split(":");
-            var link = new Link
-            {
-                Name = linkInfo[1].Trim().Split("\n")[0],
-                Link_ = linkInfo[3].Trim().Split("\n")[0],
-            };
-            return link;
-        }
-        #endregion
 
         private bool IsAdmin(string tokenString)
         {
@@ -342,5 +356,6 @@ namespace CourseDataManager.Bot
             var role = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
             return role == "Admin";
         }
+        #endregion
     }
 }

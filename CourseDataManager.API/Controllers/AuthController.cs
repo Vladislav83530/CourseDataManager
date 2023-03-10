@@ -64,6 +64,9 @@ namespace CourseDataManager.API.Controllers
             if (!_authService.VerifyPasswordHash(request.Password, user.PasswordHash, user.PasswordSalt))
                 return BadRequest("Не правильний пароль.");
 
+            if(!user.isAvailable)
+                return BadRequest("Ви недопущені до курсу. Можливо ви не проплатили навчання. Зверніться до вчителя");
+
             string token = _authService.CreateToken(user);
             await _authService.UpdateUserJwtToken(user.Email, request.ChatId, token);
 

@@ -92,5 +92,40 @@ namespace CourseDataManager.Bot
                 throw new Exception(result);
             }
         }
+
+        public async Task<IEnumerable<Student>> GetStudents(string token)
+        {
+            var request = new HttpRequestMessage();
+            request.RequestUri = new Uri(_address + $"/api/Student/all");
+
+            _client.DefaultRequestHeaders.Add("Authorization", $"bearer {token}");
+            var response = await _client.SendAsync(request);
+            _client.DefaultRequestHeaders.Remove("Authorization");
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            var result = JsonConvert.DeserializeObject<List<Student>>(content);
+            return result;
+        }
+
+        public async Task<string> ReverseIsAvailableValue(string email, string isAvailable, string token)
+        {
+            var request = new HttpRequestMessage();
+            request.RequestUri = new Uri(_address + $"/api/Student/isAvailable/?email={email}&isAvailable={isAvailable}");
+
+            _client.DefaultRequestHeaders.Add("Authorization", $"bearer {token}");
+            var response = await _client.SendAsync(request);
+            _client.DefaultRequestHeaders.Remove("Authorization");
+
+            if (response.IsSuccessStatusCode)
+                return "Успішно";
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                return "Тільки aдмін може змінювати підписку";
+            else
+            {
+                var result = await response.Content.ReadAsStringAsync();
+                throw new Exception(result);
+            }
+        }
     }
 }
