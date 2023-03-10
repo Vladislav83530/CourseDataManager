@@ -25,7 +25,7 @@ namespace CourseDataManager.API.Controllers
         }
 
         [HttpPost]
-        [Route("link/create")]
+        [Route("create")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult> CreateLink(Link link)
         {

@@ -12,6 +12,7 @@ using System.Security.Claims;
 using Telegram.Bot.Types.InputFiles;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Internal;
+using Newtonsoft.Json.Linq;
 
 namespace CourseDataManager.Bot
 {
@@ -24,6 +25,7 @@ namespace CourseDataManager.Bot
         private readonly string _patternLogin;
         private readonly string _patternRegister;
         private readonly string _patternFindDoc;
+        private readonly string _patternLink;
         private readonly IHostingEnvironment _hostingEnvironment;
 
         public CourseDataManagerBot()
@@ -35,6 +37,7 @@ namespace CourseDataManager.Bot
             _patternLogin = ConfigurationManager.AppSettings.Get("PatternLogin");
             _patternRegister = ConfigurationManager.AppSettings.Get("PatternRegister");
             _patternFindDoc = ConfigurationManager.AppSettings.Get("PatternFindDoc");
+            _patternLink = ConfigurationManager.AppSettings.Get("PatternLink");
             _hostingEnvironment = new HostingEnvironment();
         }
 
@@ -77,7 +80,7 @@ namespace CourseDataManager.Bot
             if (message.Text == "/start")
             {
                 await client.SendTextMessageAsync(message.Chat.Id, "Привіт! Я ZNO History Bot. І я допоможу тобі розібратися та знайти усі матеріали курсу");
-                await client.SendTextMessageAsync(message.Chat.Id, "Якщо ти уже зареєстрований(на), то давай продовжимо. Увійди у систему.");          
+                await client.SendTextMessageAsync(message.Chat.Id, "Якщо ти уже зареєстрований(на), то давай продовжимо. Увійди у систему.");
                 await client.SendTextMessageAsync(message.Chat.Id, "Щоб продовжити натисни \"Увійти\"", replyMarkup: replyKeyboardMarkup);
                 return;
             }
@@ -97,7 +100,7 @@ namespace CourseDataManager.Bot
             else if (Regex.IsMatch(message.Text.Trim(), _patternLogin, RegexOptions.IgnoreCase))
             {
                 if (!string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
-                {             
+                {
                     await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно вийти)");
                     return;
                 }
@@ -120,7 +123,7 @@ namespace CourseDataManager.Bot
                 return;
             }
             //registration message
-            else if(message.Text.ToLower() == "реєстрація")
+            else if (message.Text.ToLower() == "/register")
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
@@ -134,7 +137,7 @@ namespace CourseDataManager.Bot
                 return;
             }
             //registration
-            else if(Regex.IsMatch(message.Text.Trim(), _patternRegister, RegexOptions.IgnoreCase))
+            else if (Regex.IsMatch(message.Text.Trim(), _patternRegister, RegexOptions.IgnoreCase))
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
@@ -161,7 +164,7 @@ namespace CourseDataManager.Bot
                 return;
             }
             //find document
-            else if(Regex.IsMatch(message.Text.Trim(), _patternFindDoc, RegexOptions.IgnoreCase))
+            else if (Regex.IsMatch(message.Text.Trim(), _patternFindDoc, RegexOptions.IgnoreCase))
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
@@ -181,8 +184,44 @@ namespace CourseDataManager.Bot
                             document: new InputOnlineFile(content: stream, fileName: file));
                     }
                 }
+
+                var links = await _apiClient.GetLinksByName(theme, token);
+                if (links != null)
+                {
+                    foreach (var link in links)
+                    {
+                        await client.SendTextMessageAsync(message.Chat.Id, $"Назва: {link.Name}\n{link.Link_}");
+                    }
+                }
                 await client.SendTextMessageAsync(message.Chat.Id, $"Це все що знайдемо за заданою темою ({theme})");
                 return;
+            }
+            // create link message
+            else if (message.Text == "/savelink")
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                if (IsAdmin(token))
+                    await client.SendTextMessageAsync(message.Chat.Id, $"Щоб зберегти посилання на матеріали скористайся наступною командою\n" +
+                    $"Назва: ****\n" +
+                    $"Посилання: ****)");
+                else
+                    await client.SendTextMessageAsync(message.Chat.Id, "Зберігати посилання може тільки адмін.");
+                return;;
+            }
+            // create link material
+            else if (Regex.IsMatch(message.Text.Trim(), _patternLink, RegexOptions.IgnoreCase))
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                var link = ParseLink(message.Text);
+
+                var result = await _apiClient.CreateLink(link, token);
+                await client.SendTextMessageAsync(message.Chat.Id, result);
             }
             //help
             else if (message.Text.ToLower() == "/help")
@@ -220,7 +259,7 @@ namespace CourseDataManager.Bot
                     fileId: message.Document.FileId,
                     destination: fileStream,
                     cancellationToken: _cts.Token);
-                await client.SendTextMessageAsync(message.Chat.Id, "Файл успішно збережено");              
+                await client.SendTextMessageAsync(message.Chat.Id, "Файл успішно збережено");
                 return;
             }
             {
@@ -229,6 +268,7 @@ namespace CourseDataManager.Bot
                     "Невірна команду. Використай /help, щоб побачити можливі команди"
                 );
             }
+
         }
 
         private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
@@ -281,6 +321,17 @@ namespace CourseDataManager.Bot
                 Password = registerInfo[4].Trim().Split("\n")[0]
             };
             return user;
+        }
+
+        private Link ParseLink(string message)
+        {
+            var linkInfo = message.Split(":");
+            var link = new Link
+            {
+                Name = linkInfo[1].Trim().Split("\n")[0],
+                Link_ = linkInfo[3].Trim().Split("\n")[0],
+            };
+            return link;
         }
         #endregion
 

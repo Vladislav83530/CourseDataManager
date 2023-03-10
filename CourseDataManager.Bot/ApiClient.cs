@@ -1,4 +1,5 @@
 ﻿using CourseDataManager.Bot.Models;
+using Newtonsoft.Json;
 using System.Configuration;
 using System.Net.Http.Json;
 
@@ -57,6 +58,38 @@ namespace CourseDataManager.Bot
             {
                 var result = await response.Content.ReadAsStringAsync();
                 return result;
+            }
+        }
+
+        public async Task<IEnumerable<Link>> GetLinksByName(string name, string token)
+        {
+            var request = new HttpRequestMessage();
+            request.RequestUri = new Uri(_address + $"/api/Link/links?linkName={name}");
+
+            _client.DefaultRequestHeaders.Add("Authorization", $"bearer {token}");
+            var response = await _client.SendAsync(request);
+            _client.DefaultRequestHeaders.Remove("Authorization");
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            var result = JsonConvert.DeserializeObject<List<Link>>(content);
+            return result;
+        }
+
+        public async Task<string> CreateLink(Link link, string token)
+        {
+            _client.DefaultRequestHeaders.Add("Authorization", $"bearer {token}");
+            var response = await _client.PostAsJsonAsync(_address + $"/api/Link/create", link);
+            _client.DefaultRequestHeaders.Remove("Authorization");
+
+            if (response.IsSuccessStatusCode)
+                return "Посилання успішо збережено";
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+               return "Тільки aдмін може зберігати посилання";
+            else
+            {
+                var result = await response.Content.ReadAsStringAsync();
+                throw new Exception(result);
             }
         }
     }

@@ -33,9 +33,9 @@ namespace CourseDataManager.BLL.Services
         /// <exception cref="Exception"></exception>
         public async Task<IEnumerable<Link>> GetLinksByNameAsync(string linkName)
         {
-            if (string.IsNullOrWhiteSpace(linkName))
+            if (!string.IsNullOrEmpty(linkName))
             {
-               var links = await _context.Links.Where(x=>x.Name.Contains(linkName, StringComparison.CurrentCultureIgnoreCase)).ToListAsync();
+               var links = await _context.Links.Where(x=>x.Name.ToLower().Contains(linkName.ToLower())).ToListAsync();
                return links;
             }
             else
