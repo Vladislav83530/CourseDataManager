@@ -9,6 +9,9 @@ using CourseDataManager.Bot.Models;
 using System.Text.RegularExpressions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Telegram.Bot.Types.InputFiles;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Internal;
 
 namespace CourseDataManager.Bot
 {
@@ -20,6 +23,8 @@ namespace CourseDataManager.Bot
         private readonly ApiClient _apiClient;
         private readonly string _patternLogin;
         private readonly string _patternRegister;
+        private readonly string _patternFindDoc;
+        private readonly IHostingEnvironment _hostingEnvironment;
 
         public CourseDataManagerBot()
         {
@@ -29,6 +34,8 @@ namespace CourseDataManager.Bot
             _apiClient = new ApiClient();
             _patternLogin = ConfigurationManager.AppSettings.Get("PatternLogin");
             _patternRegister = ConfigurationManager.AppSettings.Get("PatternRegister");
+            _patternFindDoc = ConfigurationManager.AppSettings.Get("PatternFindDoc");
+            _hostingEnvironment = new HostingEnvironment();
         }
 
         public async Task Start()
@@ -51,6 +58,8 @@ namespace CourseDataManager.Bot
         {
             if (update.Type == UpdateType.Message && update?.Message?.Text != null)
                 await HandleMessageAsync(botClient, update.Message);
+            if (update.Type == UpdateType.Message && update?.Message?.Document != null)
+                await HandleMessageDocumentAsync(botClient, update.Message);
         }
 
         private async Task HandleMessageAsync(ITelegramBotClient client, Message message)
@@ -73,7 +82,7 @@ namespace CourseDataManager.Bot
                 return;
             }
             // Login message
-            else if (message.Text.ToLower() == "увійти")
+            else if (message.Text.ToLower() == "увійти" || message.Text.ToLower() == "/login")
             {
                 if (!string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
                 {
@@ -100,7 +109,7 @@ namespace CourseDataManager.Bot
                 return;
             }
             // Log out
-            else if (message.Text.ToLower() == "вийти")
+            else if (message.Text.ToLower() == "вийти" || message.Text.ToLower() == "/logout")
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
@@ -110,6 +119,7 @@ namespace CourseDataManager.Bot
                 await client.SendTextMessageAsync(message.Chat.Id, "Ви успішно вийшли.)");
                 return;
             }
+            //registration message
             else if(message.Text.ToLower() == "реєстрація")
             {
                 var token = await CheckToken(client, message);
@@ -123,6 +133,7 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін.");
                 return;
             }
+            //registration
             else if(Regex.IsMatch(message.Text.Trim(), _patternRegister, RegexOptions.IgnoreCase))
             {
                 var token = await CheckToken(client, message);
@@ -139,13 +150,83 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін.");
                 return;
             }
+            //find document message
+            else if (message.Text.ToLower() == "Матеріали" || message.Text.ToLower() == "/finddoc")
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                await client.SendTextMessageAsync(message.Chat.Id, "Для пошуку матеріалів введіть таку команду (Тема: назва теми)");
+                return;
+            }
+            //find document
+            else if(Regex.IsMatch(message.Text.Trim(), _patternFindDoc, RegexOptions.IgnoreCase))
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                var path = _hostingEnvironment.WebRootPath + "/Files/";
+                string[] files = Directory.GetFiles(path);
+                string theme = message.Text.Split(":")[1].Trim();
+
+                foreach (string file in files)
+                {
+                    if (file.Contains(theme, StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        await using Stream stream = System.IO.File.OpenRead(file);
+                        await client.SendDocumentAsync(
+                            chatId: message.Chat.Id,
+                            document: new InputOnlineFile(content: stream, fileName: file));
+                    }
+                }
+                await client.SendTextMessageAsync(message.Chat.Id, $"Це все що знайдемо за заданою темою ({theme})");
+                return;
+            }
+            //help
+            else if (message.Text.ToLower() == "/help")
+            {
+                await client.SendTextMessageAsync(message.Chat.Id, "Ось список усіх команд:\n" +
+                    "/start - розпочати\n" +
+                    "/login - увійти в систему\n" +
+                    "Для входу використовуйте наступний шаблон:\n   логін: **** пароль: ****\n" +
+                    "/logout - вийти з системи\n" +
+                    "/finddoc - пошук матеріалів\n" +
+                    "Для пошуку матеріалів користуйтеся настпним шаблоном:\n   Тема: ****");
+            }
             // Anothe message
             else
             {
                 await client.SendTextMessageAsync(
                     message.Chat.Id,
-                    "Невірна команду. Використай /help, щоб побачити можливі команди",
-                    replyMarkup: replyKeyboardMarkup
+                    "Невірна команду. Використай /help, щоб побачити можливі команди"
+                );
+            }
+        }
+
+        private async Task HandleMessageDocumentAsync(ITelegramBotClient client, Message message)
+        {
+            var token = await CheckToken(client, message);
+            if (token == null)
+                return;
+
+            if (message.Document != null)
+            {
+                string destinationFilePath = _hostingEnvironment.WebRootPath + "/Files/" + message.Document.FileName;
+                await using Stream fileStream = System.IO.File.OpenWrite(destinationFilePath);
+
+                var file = await client.GetInfoAndDownloadFileAsync(
+                    fileId: message.Document.FileId,
+                    destination: fileStream,
+                    cancellationToken: _cts.Token);
+                await client.SendTextMessageAsync(message.Chat.Id, "Файл успішно збережено");              
+                return;
+            }
+            {
+                await client.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Невірна команду. Використай /help, щоб побачити можливі команди"
                 );
             }
         }
