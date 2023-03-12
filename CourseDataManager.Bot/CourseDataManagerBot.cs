@@ -329,7 +329,7 @@ namespace CourseDataManager.Bot
                                 InlineKeyboardButton.WithCallbackData(text: $"{student.isAvailable}", callbackData: $"{student.Email} {student.isAvailable}"),
                             },
                         });
-                        await client.SendTextMessageAsync(message.Chat.Id, $"{student.UserName} {student.UserName} Пошта: {student.Email}", replyMarkup: inlineKeyboard);
+                        await client.SendTextMessageAsync(message.Chat.Id, $"{student.Group}) {student.UserName} {student.UserName} Пошта: {student.Email}", replyMarkup: inlineKeyboard);
                     }
                 }
                 else
@@ -346,6 +346,29 @@ namespace CourseDataManager.Bot
                     "/logout - вийти з системи\n" +
                     "/finddoc - пошук матеріалів\n" +
                     "Для пошуку матеріалів користуйтеся настпним шаблоном:\n   Тема: ****");
+            }
+            // admin help
+            else if (message.Text.ToLower() == "/adminhelp")
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                if (IsAdmin(token))
+                {
+                    await client.SendTextMessageAsync(message.Chat.Id, "Ось список усіх команд:\n" +
+                       "/register - реєстрація студентів\n" +
+                       "Для реєстраці студента використовуєте настпний шаблон\nРеєстрація\nІм'я: ****\nПрізвище: ****\nEmail: ****\nПароль: ****\nГрупа: ****\n" +
+                       "/savelink - зберегти посилань\n" +
+                       "Для збереження посилань використовуйте наступний шабон\nНазва: ****\nГрупа: ****\nПосилання: ****\n" +
+                       "/getstudents - отримати весь список студентів\n" +
+                       "/finddocbygroup - пошук матеріалів за групами\n" +
+                       "Для пошуку матеріалів за групами користуйтеся настпним шаблоном:\nГрупа: ****\nТема: ****\n" +
+                       "Для додавання файлів загружайте потрібні файли у бот, а в описі файлу вказуйте групи");
+                }
+                else
+                    await client.SendTextMessageAsync(message.Chat.Id, "Доступно тільки для адміна");
+                return;
             }
             // Anothe message
             else
@@ -384,7 +407,7 @@ namespace CourseDataManager.Bot
             {
                 await client.SendTextMessageAsync(
                     message.Chat.Id,
-                    "Невірна команду. Використай /helpadmin, щоб побачити можливі команди"
+                    "Невірна команду. Використай /adminhelp, щоб побачити можливі команди"
                 );
             }
         }
