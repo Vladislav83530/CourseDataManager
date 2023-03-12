@@ -40,7 +40,7 @@ namespace CourseDataManager.BLL.Services
         /// </summary>
         /// <returns>list if user</returns>
         public async Task<IEnumerable<User>> GetStudentsAsync() =>
-            await _context.Users.Where(x=>x.Role == Roles.Student).ToListAsync();
+            await _context.Users.Where(x=>x.Role == Roles.Student).OrderBy(x=>x.Group).ToListAsync();
 
         /// <summary>
         /// Reverse isAvailable value

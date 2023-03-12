@@ -22,7 +22,7 @@ namespace CourseDataManager.Bot
         {
             var response = await _client.PostAsJsonAsync(_address + $"/api/Auth/login", user);
             if (response.IsSuccessStatusCode)
-                return "Ви успішно увійшли.";
+                return "Ви успішно увійшли\U0001F643";
             else
             {
                 var result = await response.Content.ReadAsStringAsync();

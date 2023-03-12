@@ -83,9 +83,9 @@ namespace CourseDataManager.Bot
             // Start message
             if (message.Text == "/start")
             {
-                await client.SendTextMessageAsync(message.Chat.Id, "Привіт! Я ZNO History Bot. І я допоможу тобі розібратися та знайти усі матеріали курсу");
-                await client.SendTextMessageAsync(message.Chat.Id, "Якщо ти уже зареєстрований(на), то давай продовжимо. Увійди у систему");
-                await client.SendTextMessageAsync(message.Chat.Id, "Щоб продовжити натисни \"Увійти\"", replyMarkup: replyKeyboardMarkup);
+                await client.SendTextMessageAsync(message.Chat.Id, "Привіт! Я ZNO History Bot\U0001F916. І я допоможу тобі розібратися та знайти усі матеріали\U0001F4DA\t курсу");
+                await client.SendTextMessageAsync(message.Chat.Id, "Якщо ти уже зареєстрований(на), то давай продовжимо\U000023E9. Увійди у систему");
+                await client.SendTextMessageAsync(message.Chat.Id, "Щоб продовжити натисни \"Увійти\"\U0001F642", replyMarkup: replyKeyboardMarkup);
                 return;
             }
             // Login message
@@ -93,11 +93,11 @@ namespace CourseDataManager.Bot
             {
                 if (!string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
                 {
-                    await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно вийти)");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно вийти\U0001F601");
                     return;
                 }
 
-                await client.SendTextMessageAsync(message.Chat.Id, "Для входу введи логін та пароль так, як у наступному повідомленні " +
+                await client.SendTextMessageAsync(message.Chat.Id, "Для входу введи логін та пароль так, як у наступному повідомленні \U00002709 " +
                     "(заміни '****' на свій логін та пароль відповідно, дотримуйся пробілів як у прикладі \U0001F601)");
                 await client.SendTextMessageAsync(message.Chat.Id, "логін: **** пароль: ****");
                 return;
@@ -107,7 +107,7 @@ namespace CourseDataManager.Bot
             {
                 if (!string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
                 {
-                    await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно вийти)");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно вийти\U0001F601");
                     return;
                 }
 
@@ -125,7 +125,7 @@ namespace CourseDataManager.Bot
                     return;
 
                 await _apiClient.UpdateJwtToken(message.Chat.Id, string.Empty);
-                await client.SendTextMessageAsync(message.Chat.Id, "Ви успішно вийшли)");
+                await client.SendTextMessageAsync(message.Chat.Id, "Ви успішно вийшли\U0001F601");
                 return;
             }
             //registration message
@@ -141,7 +141,7 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, "Реєстрація\nІм'я: ****\nПрізвище: ****\nEmail: ****\nПароль: ****\nГрупа: ****");
                 }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін.");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін\U0001F601");
                 return;
             }
             //registration
@@ -158,7 +158,7 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, result);
                 }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін\U0001F601");
                 return;
             }
             //find document message
@@ -168,7 +168,7 @@ namespace CourseDataManager.Bot
                 if (token == null)
                     return;
 
-                await client.SendTextMessageAsync(message.Chat.Id, "Для пошуку матеріалів введіть таку команду, як у наступному повідомленні");
+                await client.SendTextMessageAsync(message.Chat.Id, "Для пошуку матеріалів\U0001F4DA введіть таку команду, як у наступному повідомленні \U00002709");
                 await client.SendTextMessageAsync(message.Chat.Id, "Тема: назва теми");
                 return;
             }
@@ -222,11 +222,11 @@ namespace CourseDataManager.Bot
 
                 if (IsAdmin(token))
                 {
-                    await client.SendTextMessageAsync(message.Chat.Id, "Щоб знайти атеріали певної групи скористайтеся наступною командою");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Щоб знайти матеріали певної групи скористайтеся наступною командою");
                     await client.SendTextMessageAsync(message.Chat.Id, "Група: ****\nТема: ****");
                 }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Це можливо тільки для адміна");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Це можливо тільки для адміна\U0001F601");
                 return;
             }
             // get documents by group (for admin)
@@ -272,7 +272,7 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, $"Це все що знайдемо за заданою темою ({theme})");
                 }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Це можливо тільки для адміна");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Це можливо тільки для адміна\U0001F601");
                 return;
             }
             // create link message
@@ -288,7 +288,7 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, $"Назва: ****\nГрупа: ****\nПосилання: ****");
                 }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Зберігати посилання може тільки адмін");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Зберігати посилання може тільки адмін\U0001F601");
                 return;
             }
             // create link material
@@ -333,13 +333,13 @@ namespace CourseDataManager.Bot
                     }
                 }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Доступно тільки для адміна");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Доступно тільки для адміна\U0001F601");
                 return;
             }
             //help
             else if (message.Text.ToLower() == "/help")
             {
-                await client.SendTextMessageAsync(message.Chat.Id, "Ось список усіх команд:\n" +
+                await client.SendTextMessageAsync(message.Chat.Id, "Ось список усіх команд\U0001F916:\n" +
                     "/start - розпочати\n" +
                     "/login - увійти в систему\n" +
                     "Для входу використовуйте наступний шаблон:\n   логін: **** пароль: ****\n" +
@@ -356,7 +356,7 @@ namespace CourseDataManager.Bot
 
                 if (IsAdmin(token))
                 {
-                    await client.SendTextMessageAsync(message.Chat.Id, "Ось список усіх команд:\n" +
+                    await client.SendTextMessageAsync(message.Chat.Id, "Ось список усіх команд\U0001F916:\n" +
                        "/register - реєстрація студентів\n" +
                        "Для реєстраці студента використовуєте настпний шаблон\nРеєстрація\nІм'я: ****\nПрізвище: ****\nEmail: ****\nПароль: ****\nГрупа: ****\n" +
                        "/savelink - зберегти посилань\n" +
@@ -375,7 +375,7 @@ namespace CourseDataManager.Bot
             {
                 await client.SendTextMessageAsync(
                     message.Chat.Id,
-                    "Невірна команду. Використай /help, щоб побачити можливі команди"
+                    "Невірна команду\U0001F61F. Використай /help, щоб побачити можливі команди\U0001F601"
                 );
             }
         }
@@ -407,7 +407,7 @@ namespace CourseDataManager.Bot
             {
                 await client.SendTextMessageAsync(
                     message.Chat.Id,
-                    "Невірна команду. Використай /adminhelp, щоб побачити можливі команди"
+                    "Невірна команду\U0001F61F. Використай /help, щоб побачити можливі команди\U0001F601"
                 );
             }
         }
@@ -454,7 +454,7 @@ namespace CourseDataManager.Bot
             var token = await _apiClient.GetJwtToken(message.Chat.Id);
             if (string.IsNullOrEmpty(token))
             {
-                await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно увійти)");
+                await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно увійти\U0001F601");
                 return null;
             }
             else
