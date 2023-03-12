@@ -18,9 +18,9 @@ namespace CourseDataManager.API.Controllers
         [HttpGet]
         [Route("links")]
         [Authorize]
-        public async Task<ActionResult> GetLinksByName([FromQuery] string linkName)
+        public async Task<ActionResult> GetLinksByName([FromQuery] string linkName, int group)
         {
-            var links = await _linkService.GetLinksByNameAsync(linkName);    
+            var links = await _linkService.GetLinksByNameAsync(linkName,group);    
             return Ok(links);
         }
 

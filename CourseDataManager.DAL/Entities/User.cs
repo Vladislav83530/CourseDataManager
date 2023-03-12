@@ -21,6 +21,8 @@ namespace CourseDataManager.DAL.Entities
         public Roles Role { get; set; }
         [Required]
         public bool isAvailable { get; set; }
+        [Required]
+        public int Group { get; set; }
         public string? JwtToken { get; set; } = string.Empty;
         public long ChatId { get; set; }
     }

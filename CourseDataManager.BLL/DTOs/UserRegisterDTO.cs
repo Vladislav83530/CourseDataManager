@@ -14,5 +14,7 @@ namespace CourseDataManager.BLL.DTOs
         public string Email { get; set; } = string.Empty;
         [Required]
         public string Password { get; set; } = string.Empty;
+        [Required]
+        public int Group { get; set; }
     }
 }

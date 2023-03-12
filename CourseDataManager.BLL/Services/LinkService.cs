@@ -31,11 +31,11 @@ namespace CourseDataManager.BLL.Services
         /// <param name="linkName"></param>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        public async Task<IEnumerable<Link>> GetLinksByNameAsync(string linkName)
+        public async Task<IEnumerable<Link>> GetLinksByNameAsync(string linkName, int group)
         {
             if (!string.IsNullOrEmpty(linkName))
             {
-               var links = await _context.Links.Where(x=>x.Name.ToLower().Contains(linkName.ToLower())).ToListAsync();
+               var links = await _context.Links.Where(x=>x.Name.ToLower().Contains(linkName.ToLower()) && x.Group == group).ToListAsync();
                return links;
             }
             else

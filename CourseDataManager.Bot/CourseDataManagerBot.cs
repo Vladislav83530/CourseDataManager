@@ -24,6 +24,7 @@ namespace CourseDataManager.Bot
         private readonly string _patternRegister;
         private readonly string _patternFindDoc;
         private readonly string _patternLink;
+        private readonly string _patterFindDocByGroup;
         private readonly IHostingEnvironment _hostingEnvironment;
         private readonly ParserModel _parserModel;
 
@@ -37,6 +38,7 @@ namespace CourseDataManager.Bot
             _patternRegister = ConfigurationManager.AppSettings.Get("PatternRegister");
             _patternFindDoc = ConfigurationManager.AppSettings.Get("PatternFindDoc");
             _patternLink = ConfigurationManager.AppSettings.Get("PatternLink");
+            _patterFindDocByGroup = ConfigurationManager.AppSettings.Get("PatterFindDocByGroup");
             _hostingEnvironment = new HostingEnvironment();
             _parserModel = new ParserModel();
         }
@@ -64,7 +66,7 @@ namespace CourseDataManager.Bot
             if (update.Type == UpdateType.Message && update?.Message?.Document != null)
                 await HandleMessageDocumentAsync(botClient, update.Message);
             if (update.Type == UpdateType.CallbackQuery)
-                await HandleCallbackQuery(botClient, update.CallbackQuery);
+                await HandleCallbackQuery(botClient, update.CallbackQuery);         
         }
 
         private async Task HandleMessageAsync(ITelegramBotClient client, Message message)
@@ -82,7 +84,7 @@ namespace CourseDataManager.Bot
             if (message.Text == "/start")
             {
                 await client.SendTextMessageAsync(message.Chat.Id, "Привіт! Я ZNO History Bot. І я допоможу тобі розібратися та знайти усі матеріали курсу");
-                await client.SendTextMessageAsync(message.Chat.Id, "Якщо ти уже зареєстрований(на), то давай продовжимо. Увійди у систему.");
+                await client.SendTextMessageAsync(message.Chat.Id, "Якщо ти уже зареєстрований(на), то давай продовжимо. Увійди у систему");
                 await client.SendTextMessageAsync(message.Chat.Id, "Щоб продовжити натисни \"Увійти\"", replyMarkup: replyKeyboardMarkup);
                 return;
             }
@@ -95,7 +97,9 @@ namespace CourseDataManager.Bot
                     return;
                 }
 
-                await client.SendTextMessageAsync(message.Chat.Id, "Для входу введи логін та пароль через пробіл (логін: **** пароль: ****)");
+                await client.SendTextMessageAsync(message.Chat.Id, "Для входу введи логін та пароль так, як у наступному повідомленні " +
+                    "(заміни '****' на свій логін та пароль відповідно, дотримуйся пробілів як у прикладі \U0001F601)");
+                await client.SendTextMessageAsync(message.Chat.Id, "логін: **** пароль: ****");
                 return;
             }
             // Login
@@ -121,7 +125,7 @@ namespace CourseDataManager.Bot
                     return;
 
                 await _apiClient.UpdateJwtToken(message.Chat.Id, string.Empty);
-                await client.SendTextMessageAsync(message.Chat.Id, "Ви успішно вийшли.)");
+                await client.SendTextMessageAsync(message.Chat.Id, "Ви успішно вийшли)");
                 return;
             }
             //registration message
@@ -132,8 +136,10 @@ namespace CourseDataManager.Bot
                     return;
 
                 if (IsAdmin(token))
-                    await client.SendTextMessageAsync(message.Chat.Id, "Для реєстрації користувача уведіть наступну команду:" +
-                        "\n\nРеєстрація\nІм'я: ****\nПрізвище: ****\nEmail: ****\nПароль: ****");
+                {
+                    await client.SendTextMessageAsync(message.Chat.Id, "Для реєстрації користувача уведіть наступну команду:");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Реєстрація\nІм'я: ****\nПрізвище: ****\nEmail: ****\nПароль: ****\nГрупа: ****");
+                }
                 else
                     await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін.");
                 return;
@@ -152,17 +158,18 @@ namespace CourseDataManager.Bot
                     await client.SendTextMessageAsync(message.Chat.Id, result);
                 }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін.");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Реєструвати користувачів може тільки адмін");
                 return;
             }
             //find document message
-            else if (message.Text.ToLower() == "Матеріали" || message.Text.ToLower() == "/finddoc")
+            else if (message.Text.ToLower() == "матеріали" || message.Text.ToLower() == "/finddoc")
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
                     return;
 
-                await client.SendTextMessageAsync(message.Chat.Id, "Для пошуку матеріалів введіть таку команду (Тема: назва теми)");
+                await client.SendTextMessageAsync(message.Chat.Id, "Для пошуку матеріалів введіть таку команду, як у наступному повідомленні");
+                await client.SendTextMessageAsync(message.Chat.Id, "Тема: назва теми");
                 return;
             }
             //find document
@@ -172,46 +179,117 @@ namespace CourseDataManager.Bot
                 if (token == null)
                     return;
 
-                var path = _hostingEnvironment.WebRootPath + "/Files/";
-                string[] files = Directory.GetFiles(path);
-                string theme = message.Text.Split(":")[1].Trim();
-
-                foreach (string file in files)
+                if (!IsAdmin(token))
                 {
-                    if (file.Contains(theme, StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        await using Stream stream = System.IO.File.OpenRead(file);
-                        await client.SendDocumentAsync(
-                            chatId: message.Chat.Id,
-                            document: new InputOnlineFile(content: stream, fileName: file));
-                    }
-                }
+                    string group = GetStudentGroup(token);
 
-                var links = await _apiClient.GetLinksByName(theme, token);
-                if (links != null)
-                {
-                    foreach (var link in links)
+                    var path = _hostingEnvironment.WebRootPath + $"/Files/{group}/";
+
+                    string[] files = Directory.GetFiles(path);
+                    string theme = message.Text.Split(":")[1].Trim();
+
+                    foreach (string file in files)
                     {
-                        await client.SendTextMessageAsync(message.Chat.Id, $"Назва: {link.Name}\n{link.Link_}");
+                        if (file.Contains(theme, StringComparison.CurrentCultureIgnoreCase))
+                        {
+                            await using Stream stream = System.IO.File.OpenRead(file);
+                            await client.SendDocumentAsync(
+                                chatId: message.Chat.Id,
+                                document: new InputOnlineFile(content: stream, fileName: file));
+                        }
                     }
+
+                    var links = await _apiClient.GetLinksByName(theme, int.Parse(group), token);
+                    if (links != null)
+                    {
+                        foreach (var link in links)
+                        {
+                            await client.SendTextMessageAsync(message.Chat.Id, $"Назва: {link.Name}\n{link.Link_}");
+                        }
+                    }
+                    await client.SendTextMessageAsync(message.Chat.Id, $"Це все що знайдемо за заданою темою ({theme})");
                 }
-                await client.SendTextMessageAsync(message.Chat.Id, $"Це все що знайдемо за заданою темою ({theme})");
+                else
+                    await client.SendTextMessageAsync(message.Chat.Id, "Даний пошук можливий тільки студентам");
                 return;
             }
-            // create link message
-            else if (message.Text == "/savelink")
+            // get documents by group (for admin)
+            else if (message.Text.ToLower() == "/finddocbygroup")
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
                     return;
 
                 if (IsAdmin(token))
-                    await client.SendTextMessageAsync(message.Chat.Id, $"Щоб зберегти посилання на матеріали скористайся наступною командою\n" +
-                    $"Назва: ****\n" +
-                    $"Посилання: ****)");
+                {
+                    await client.SendTextMessageAsync(message.Chat.Id, "Щоб знайти атеріали певної групи скористайтеся наступною командою");
+                    await client.SendTextMessageAsync(message.Chat.Id, "Група: ****\nТема: ****");
+                }
                 else
-                    await client.SendTextMessageAsync(message.Chat.Id, "Зберігати посилання може тільки адмін.");
-                return; ;
+                    await client.SendTextMessageAsync(message.Chat.Id, "Це можливо тільки для адміна");
+                return;
+            }
+            // get documents by group (for admin)
+            else if (Regex.IsMatch(message.Text.Trim(), _patterFindDocByGroup, RegexOptions.IgnoreCase))
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                if (IsAdmin(token))
+                {
+                    var group = message.Text.Split(':')[1].Trim().Split('\n')[0];
+                    string theme = message.Text.Split(":")[2].Trim().Split('\n')[0];
+
+                    var path = _hostingEnvironment.WebRootPath + $"/Files/{group}/";
+
+                    if (Directory.Exists(path))
+                    {
+                        string[] files = Directory.GetFiles(path);
+
+                        foreach (string file in files)
+                        {
+                            if (file.Contains(theme, StringComparison.CurrentCultureIgnoreCase))
+                            {
+                                await using Stream stream = System.IO.File.OpenRead(file);
+                                await client.SendDocumentAsync(
+                                    chatId: message.Chat.Id,
+                                    document: new InputOnlineFile(content: stream, fileName: file));
+                            }
+                        }
+                    }
+                    else
+                        await client.SendTextMessageAsync(message.Chat.Id, $"Схоже ви ще не додаваи файли для цієї групи");
+
+                    var links = await _apiClient.GetLinksByName(theme, int.Parse(group), token);
+                    if (links != null)
+                    {
+                        foreach (var link in links)
+                        {
+                            await client.SendTextMessageAsync(message.Chat.Id, $"Назва: {link.Name}\n{link.Link_}");
+                        }
+                    }
+                    await client.SendTextMessageAsync(message.Chat.Id, $"Це все що знайдемо за заданою темою ({theme})");
+                }
+                else
+                    await client.SendTextMessageAsync(message.Chat.Id, "Це можливо тільки для адміна");
+                return;
+            }
+            // create link message
+            else if (message.Text.ToLower() == "/savelink")
+            {
+                var token = await CheckToken(client, message);
+                if (token == null)
+                    return;
+
+                if (IsAdmin(token))
+                {
+                    await client.SendTextMessageAsync(message.Chat.Id, $"Щоб зберегти посилання на матеріали скористайся наступною командою");
+                    await client.SendTextMessageAsync(message.Chat.Id, $"Назва: ****\nГрупа: ****\nПосилання: ****");
+                }
+                else
+                    await client.SendTextMessageAsync(message.Chat.Id, "Зберігати посилання може тільки адмін");
+                return;
             }
             // create link material
             else if (Regex.IsMatch(message.Text.Trim(), _patternLink, RegexOptions.IgnoreCase))
@@ -220,14 +298,20 @@ namespace CourseDataManager.Bot
                 if (token == null)
                     return;
 
-                var link = _parserModel.ParseLink(message.Text);
-
-                var result = await _apiClient.CreateLink(link, token);
-                await client.SendTextMessageAsync(message.Chat.Id, result);
+                try
+                {
+                    var link = _parserModel.ParseLink(message.Text);
+                    var result = await _apiClient.CreateLink(link, token);
+                    await client.SendTextMessageAsync(message.Chat.Id, result);
+                }
+                catch {
+                    await client.SendTextMessageAsync(message.Chat.Id, "Щось пішло не так спробуйте ще раз. Можливо проблема у посиланні");
+                    return;
+                }
                 return;
             }
             // get all students
-            else if (message.Text == "/getstudents")
+            else if (message.Text.ToLower() == "/getstudents")
             {
                 var token = await CheckToken(client, message);
                 if (token == null)
@@ -279,11 +363,17 @@ namespace CourseDataManager.Bot
             if (token == null)
                 return;
 
-            if (message.Document != null)
-            {
-                string destinationFilePath = _hostingEnvironment.WebRootPath + "/Files/" + message.Document.FileName;
-                await using Stream fileStream = System.IO.File.OpenWrite(destinationFilePath);
+            string group = message.Caption;
 
+            if (message.Document != null && group != null)
+            {
+                string folderPath = _hostingEnvironment.WebRootPath + $"/Files/{group}/";
+                string destinationFilePath = folderPath + message.Document.FileName;
+
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                await using Stream fileStream = System.IO.File.OpenWrite(destinationFilePath);
                 var file = await client.GetInfoAndDownloadFileAsync(
                     fileId: message.Document.FileId,
                     destination: fileStream,
@@ -294,10 +384,9 @@ namespace CourseDataManager.Bot
             {
                 await client.SendTextMessageAsync(
                     message.Chat.Id,
-                    "Невірна команду. Використай /help, щоб побачити можливі команди"
+                    "Невірна команду. Використай /helpadmin, щоб побачити можливі команди"
                 );
             }
-
         }
 
         private async Task HandleCallbackQuery(ITelegramBotClient client, CallbackQuery query)
@@ -355,6 +444,14 @@ namespace CourseDataManager.Bot
             var token = tokenHandler.ReadJwtToken(tokenString);
             var role = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
             return role == "Admin";
+        }
+
+        private string GetStudentGroup(string tokenString)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.ReadJwtToken(tokenString);
+            var group = token.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Anonymous)?.Value;
+            return group;
         }
         #endregion
     }

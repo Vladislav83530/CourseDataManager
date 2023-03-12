@@ -4,5 +4,6 @@
     {
         public string Name { get; set; }
         public string Link_ { get; set; }
+        public int Group { get; set; }
     }
 }

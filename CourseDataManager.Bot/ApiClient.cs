@@ -1,7 +1,9 @@
 ﻿using CourseDataManager.Bot.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Configuration;
 using System.Net.Http.Json;
+using Telegram.Bot.Types;
 
 namespace CourseDataManager.Bot
 {
@@ -39,7 +41,7 @@ namespace CourseDataManager.Bot
 
         public async Task<string> UpdateJwtToken(long chatId, string jwtToken)
         {         
-            var response = await _client.PostAsync(_address + $"/api/Auth/updatetoken?chatId={chatId}&jwtToken={jwtToken}", null );
+            var response = await _client.PostAsync(_address + $"/api/Auth/updatetoken?chatId={chatId}&jwtToken={jwtToken}", null);
             var result = await response.Content.ReadAsStringAsync();
             return result;
         }
@@ -54,6 +56,8 @@ namespace CourseDataManager.Bot
                 return "Користувач успішно зареєстрований";
             if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 return "Тільки адмін може реєструвати користувачів";
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                return "Спробуйте увійти ще раз";           
             else
             {
                 var result = await response.Content.ReadAsStringAsync();
@@ -61,16 +65,19 @@ namespace CourseDataManager.Bot
             }
         }
 
-        public async Task<IEnumerable<Link>> GetLinksByName(string name, string token)
+        public async Task<IEnumerable<Link>> GetLinksByName(string name, int group, string token)
         {
             var request = new HttpRequestMessage();
-            request.RequestUri = new Uri(_address + $"/api/Link/links?linkName={name}");
+            request.RequestUri = new Uri(_address + $"/api/Link/links?linkName={name}&group={group}");
 
             _client.DefaultRequestHeaders.Add("Authorization", $"bearer {token}");
             var response = await _client.SendAsync(request);
             _client.DefaultRequestHeaders.Remove("Authorization");
 
             var content = await response.Content.ReadAsStringAsync();
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                throw new Exception("Спробуйте увійти ще раз");
 
             var result = JsonConvert.DeserializeObject<List<Link>>(content);
             return result;
@@ -86,6 +93,8 @@ namespace CourseDataManager.Bot
                 return "Посилання успішо збережено";
             if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                return "Тільки aдмін може зберігати посилання";
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                return "Спробуйте увійти ще раз";
             else
             {
                 var result = await response.Content.ReadAsStringAsync();
@@ -101,6 +110,10 @@ namespace CourseDataManager.Bot
             _client.DefaultRequestHeaders.Add("Authorization", $"bearer {token}");
             var response = await _client.SendAsync(request);
             _client.DefaultRequestHeaders.Remove("Authorization");
+
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                throw new Exception("Спробуйте увійти ще раз");
 
             var content = await response.Content.ReadAsStringAsync();
 
@@ -119,6 +132,8 @@ namespace CourseDataManager.Bot
 
             if (response.IsSuccessStatusCode)
                 return "Успішно";
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                return "Спробуйте увійти ще раз";
             if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 return "Тільки aдмін може змінювати підписку";
             else

@@ -23,7 +23,8 @@ namespace CourseDataManager.Bot
                 UserName = registerInfo[1].Trim().Split("\n")[0],
                 UserSurname = registerInfo[2].Trim().Split("\n")[0],
                 Email = registerInfo[3].Trim().Split("\n")[0],
-                Password = registerInfo[4].Trim().Split("\n")[0]
+                Password = registerInfo[4].Trim().Split("\n")[0],
+                Group = int.Parse(registerInfo[5].Trim().Split("\n")[0])
             };
             return user;
         }
@@ -34,7 +35,8 @@ namespace CourseDataManager.Bot
             var link = new Link
             {
                 Name = linkInfo[1].Trim().Split("\n")[0],
-                Link_ = linkInfo[3].Trim().Split("\n")[0],
+                Group = int.Parse(linkInfo[2].Trim().Split("\n")[0]),
+                Link_ = linkInfo[4].Trim().Split("\n")[0]
             };
             return link;
         }

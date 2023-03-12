@@ -79,7 +79,7 @@ namespace CourseDataManager.BLL.Services
             {
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role.ToString()),
-                new Claim(ClaimTypes.Anonymous, user.isAvailable.ToString())
+                new Claim(ClaimTypes.Anonymous, user.Group.ToString())
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
