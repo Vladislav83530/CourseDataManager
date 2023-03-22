@@ -9,8 +9,6 @@ using System.Text.RegularExpressions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Telegram.Bot.Types.InputFiles;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Internal;
 
 namespace CourseDataManager.Bot
 {
@@ -25,7 +23,6 @@ namespace CourseDataManager.Bot
         private readonly string _patternFindDoc;
         private readonly string _patternLink;
         private readonly string _patterFindDocByGroup;
-        private readonly IHostingEnvironment _hostingEnvironment;
         private readonly ParserModel _parserModel;
 
         public CourseDataManagerBot()
@@ -39,7 +36,6 @@ namespace CourseDataManager.Bot
             _patternFindDoc = ConfigurationManager.AppSettings.Get("PatternFindDoc");
             _patternLink = ConfigurationManager.AppSettings.Get("PatternLink");
             _patterFindDocByGroup = ConfigurationManager.AppSettings.Get("PatterFindDocByGroup");
-            _hostingEnvironment = new HostingEnvironment();
             _parserModel = new ParserModel();
         }
 
@@ -54,7 +50,7 @@ namespace CourseDataManager.Bot
             var me = await _botClient.GetMeAsync();
 
             Console.WriteLine($"Start listening for @{me.Username}");
-            Console.ReadLine();
+            Thread.Sleep(int.MaxValue);
 
             _cts.Cancel();
         }
@@ -63,8 +59,8 @@ namespace CourseDataManager.Bot
         {
             if (update.Type == UpdateType.Message && update?.Message?.Text != null)
                 await HandleMessageAsync(botClient, update.Message);
-            if (update.Type == UpdateType.Message && update?.Message?.Document != null)
-                await HandleMessageDocumentAsync(botClient, update.Message);
+            //if (update.Type == UpdateType.Message && update?.Message?.Document != null)
+            //    await HandleMessageDocumentAsync(botClient, update.Message);
             if (update.Type == UpdateType.CallbackQuery)
                 await HandleCallbackQuery(botClient, update.CallbackQuery);         
         }
@@ -108,6 +104,13 @@ namespace CourseDataManager.Bot
                 if (!string.IsNullOrEmpty(await _apiClient.GetJwtToken(message.Chat.Id)))
                 {
                     await client.SendTextMessageAsync(message.Chat.Id, "Спочатку потрібно вийти\U0001F601");
+                    return;
+                }
+
+                var logPass = message.Text.Split(" ");
+                if(logPass.Length < 4) {
+                    await client.SendTextMessageAsync(message.Chat.Id, "Не вірна команда. Для входу введи команду наступним чином:");
+                    await client.SendTextMessageAsync(message.Chat.Id, "логін: **** пароль: ****");
                     return;
                 }
 
@@ -183,21 +186,28 @@ namespace CourseDataManager.Bot
                 {
                     string group = GetStudentGroup(token);
 
-                    var path = _hostingEnvironment.WebRootPath + $"/Files/{group}/";
+                    string dynoPath = Environment.GetEnvironmentVariable("DYNO");
+                    //string path = Path.Combine(dynoPath, "course-data-manager-bot", "Files", group);
 
-                    string[] files = Directory.GetFiles(path);
+                    //if (!Directory.Exists(path))
+                    //{
+                    //    await client.SendTextMessageAsync(message.Chat.Id, $"Матеріалів ще немає");
+                    //    return;
+                    //}
+
+                    //string[] files = Directory.GetFiles(path);
                     string theme = message.Text.Split(":")[1].Trim();
 
-                    foreach (string file in files)
-                    {
-                        if (file.Contains(theme, StringComparison.CurrentCultureIgnoreCase))
-                        {
-                            await using Stream stream = System.IO.File.OpenRead(file);
-                            await client.SendDocumentAsync(
-                                chatId: message.Chat.Id,
-                                document: new InputOnlineFile(content: stream, fileName: file));
-                        }
-                    }
+                    //foreach (string file in files)
+                    //{
+                    //    if (file.Contains(theme, StringComparison.CurrentCultureIgnoreCase))
+                    //    {
+                    //        await using Stream stream = System.IO.File.OpenRead(file);
+                    //        await client.SendDocumentAsync(
+                    //            chatId: message.Chat.Id,
+                    //            document: new InputOnlineFile(content: stream, fileName: file));
+                    //    }
+                    //}
 
                     var links = await _apiClient.GetLinksByName(theme, int.Parse(group), token);
                     if (links != null)
@@ -241,7 +251,8 @@ namespace CourseDataManager.Bot
                     var group = message.Text.Split(':')[1].Trim().Split('\n')[0];
                     string theme = message.Text.Split(":")[2].Trim().Split('\n')[0];
 
-                    var path = _hostingEnvironment.WebRootPath + $"/Files/{group}/";
+                    string dynoPath = Environment.GetEnvironmentVariable("DYNO");
+                    string path = Path.Combine(dynoPath, "course-data-manager-bot", "Files", group);
 
                     if (Directory.Exists(path))
                     {
@@ -329,7 +340,7 @@ namespace CourseDataManager.Bot
                                 InlineKeyboardButton.WithCallbackData(text: $"{student.isAvailable}", callbackData: $"{student.Email} {student.isAvailable}"),
                             },
                         });
-                        await client.SendTextMessageAsync(message.Chat.Id, $"{student.Group}) {student.UserName} {student.UserName} Пошта: {student.Email}", replyMarkup: inlineKeyboard);
+                        await client.SendTextMessageAsync(message.Chat.Id, $"{student.Group}) {student.UserName} {student.UserSurname} Пошта: {student.Email}", replyMarkup: inlineKeyboard);
                     }
                 }
                 else
@@ -390,8 +401,9 @@ namespace CourseDataManager.Bot
 
             if (message.Document != null && group != null)
             {
-                string folderPath = _hostingEnvironment.WebRootPath + $"/Files/{group}/";
-                string destinationFilePath = folderPath + message.Document.FileName;
+                string dynoPath = Environment.GetEnvironmentVariable("DYNO");
+                string folderPath = Path.Combine(dynoPath, "course-data-manager-bot", "Files", group);
+                string destinationFilePath = folderPath + $"/{message.Document.FileName}";
 
                 if (!Directory.Exists(folderPath))
                     Directory.CreateDirectory(folderPath);
@@ -435,7 +447,7 @@ namespace CourseDataManager.Bot
             }
         }
 
-        private Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+        private static async Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
             var ErrorMessage = exception switch
             {
@@ -443,9 +455,7 @@ namespace CourseDataManager.Bot
                     => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
-
             Console.WriteLine(ErrorMessage);
-            return Task.CompletedTask;
         }
 
         #region Help message

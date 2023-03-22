@@ -1,9 +1,7 @@
 ﻿using CourseDataManager.Bot.Models;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using System.Configuration;
 using System.Net.Http.Json;
-using Telegram.Bot.Types;
 
 namespace CourseDataManager.Bot
 {
@@ -25,8 +23,7 @@ namespace CourseDataManager.Bot
                 return "Ви успішно увійшли\U0001F643";
             else
             {
-                var result = await response.Content.ReadAsStringAsync();
-                return result;
+                return "Щось пішло не так, спробуйте ще раз. Повідомте, будь ласка, про це вчителя. Це сприятиме вдосконаленню бота)";
             }
         }
 
@@ -60,8 +57,7 @@ namespace CourseDataManager.Bot
                 return "Спробуйте увійти ще раз";           
             else
             {
-                var result = await response.Content.ReadAsStringAsync();
-                return result;
+                return "Щось пішло не так, спробуйте ще раз. Повідомте, будь ласка, про це вчителя. Це сприятиме вдосконаленню бота)";
             }
         }
 
@@ -97,8 +93,7 @@ namespace CourseDataManager.Bot
                 return "Спробуйте увійти ще раз";
             else
             {
-                var result = await response.Content.ReadAsStringAsync();
-                throw new Exception(result);
+                return "Щось пішло не так, спробуйте ще раз. Повідомте, будь ласка, про це вчителя. Це сприятиме вдосконаленню бота)";
             }
         }
 
@@ -138,8 +133,7 @@ namespace CourseDataManager.Bot
                 return "Тільки aдмін може змінювати підписку";
             else
             {
-                var result = await response.Content.ReadAsStringAsync();
-                throw new Exception(result);
+                return "Щось пішло не так, спробуйте ще раз. Повідомте, будь ласка, про це вчителя. Це сприятиме вдосконаленню бота)";
             }
         }
     }

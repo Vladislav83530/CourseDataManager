@@ -7,11 +7,13 @@ namespace CourseDataManager.Bot
         public UserLogin ParseForLogin(string message)
         {
             var logPass = message.Split(" ");
+
             var user = new UserLogin
             {
                 Email = logPass[1].Trim(),
                 Password = logPass[3].Trim()
             };
+
             return user;
         }
 
